@@ -2,7 +2,7 @@ export interface User {
   id: string
   email: string
   name: string
-  avatar?: string
+  avatar_url?: string
   created_at: string
 }
 
@@ -14,9 +14,9 @@ export interface Chat {
   last_message?: string
   last_message_time?: string
   unread_count: number
-  avatar?: string
   labels?: string[]
   assigned_to?: string
+  avatar?: string
   created_at: string
 }
 
@@ -25,12 +25,13 @@ export interface Message {
   chat_id: string
   sender_id: string
   content: string
-  type: "text" | "image" | "video" | "file"
-  attachment_url?: string
+  type: "text" | "image" | "file"
+  file_url?: string
   created_at: string
 }
 
-export interface AuthState {
-  user: User | null
-  loading: boolean
+export interface Label {
+  id: string
+  name: string
+  color: string
 }
