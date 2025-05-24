@@ -1,37 +1,38 @@
 "use client"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { LoginForm } from "../components/LoginForm"
-import { authHelpers } from "../lib/supabase"
 
-export default function Home() {
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+import ChatArea from "@/components/chat/ChatArea"
+import MessageArea from "../components/MessageArea"
+import Header from "@/components/layouts/Header"
+import Sidebar from "../components/Sidebar"
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const user = await authHelpers.getCurrentUser()
-      if (user) {
-        router.push("/chat")
-      } else {
-        setLoading(false)
-      }
-    }
+import { useState } from "react"
 
-    checkAuth()
-  }, [router])
+export default function Page() {
+  const [currentChatPersonId, setCurrentChatPersonId] =
+    useState<string>("")
 
-  const handleLogin = (user: any) => {
-    router.push("/chat")
-  }
+  return (
+    <div className="flex h-screen flex-1 w-full">
+      <section className="h-full w-full flex-[0.04]">
+        <Sidebar />
+      </section>
+      <div className="h-full w-full flex-[0.96]  flex flex-col ">
+        <section className="flex-[0.06] w-full h-full">
+          <Header />
+        </section>
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading...</div>
+        <main className="w-full h-full flex-[0.94] flex min-h-0 min-w-0">
+          <section className="w-full h-full flex-[0.27] border-r border-ws-green-50 min-h-0 min-w-0">
+            <ChatArea
+              updateSelectedPersonId={setCurrentChatPersonId}
+              selectedPersonId={currentChatPersonId}
+            />
+          </section>
+          <section className="w-full h-full flex-[0.73] min-h-0 min-w-0">
+            <MessageArea currentChatPersonId={currentChatPersonId} />
+          </section>
+        </main>
       </div>
-    )
-  }
-
-  return <LoginForm onLogin={handleLogin} />
+    </div>
+  )
 }

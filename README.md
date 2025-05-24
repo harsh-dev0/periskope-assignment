@@ -1,186 +1,69 @@
-# Periskope Chat Application
+# Chat Application
 
-A modern, real-time chat application built with Next.js, TypeScript, Tailwind CSS, and Supabase.
+A real-time chat application built with Next.js, TypeScript, and Supabase.
 
-## Features
+## Project Structure
 
-### Core Features
-
-- ✅ **Authentication**: Login/Signup with email and password
-- ✅ **Real-time Messaging**: Send and receive messages instantly
-- ✅ **Chat Management**: View all chats with unread counts and timestamps
-- ✅ **Responsive Design**: Pixel-perfect UI matching the provided design
-- ✅ **Search & Filter**: Search chats and filter by status (unread, assigned, important)
-
-### Optional Features Implemented
-
-- ✅ **Chat Labels**: Add and display labels on chats
-- ✅ **Member Assignment**: Assign team members to specific chats
-- ✅ **Advanced Filters**: Filter chats by multiple criteria
-
-### Bonus Features
-
-- ✅ **Semantic HTML**: Proper use of semantic tags instead of just divs
-- ✅ **Modern UI/UX**: Clean, professional interface with smooth animations
-- ✅ **TypeScript**: Full type safety throughout the application
-- ✅ **Real-time Updates**: Live message updates using Supabase subscriptions
-
-## Tech Stack
-
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **Styling**: Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Auth, Real-time)
-- **Icons**: React Icons
-- **Deployment**: Vercel/Netlify ready
+- `src/app`: Next.js app router pages
+- `src/components`: React components
+  - `chat/`: Chat-related components
+  - `layouts/`: Layout components
+  - `ui/`: Reusable UI components
+- `src/lib`: Utilities and shared code
+  - `db/`: Database schema and utilities
+  - `types/`: TypeScript type definitions
+  - `supabase.ts`: Supabase client configuration
 
 ## Database Schema
 
-### Users Table
+The application uses the following tables:
 
-```sql
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  avatar TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+1. **profiles**: User profile information
+2. **messages**: Chat messages between users
+3. **chat_label_types**: Available label types for categorizing chats
+4. **chat_labels**: Associations between labels and chats
+5. **chats**: (Optional) Chat metadata for future group chat support
 
-### Chats Table
+See `src/lib/db/schema.sql` for the complete schema.
 
-```sql
-CREATE TABLE chats (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  type TEXT CHECK (type IN ('individual', 'group')) DEFAULT 'individual',
-  participants TEXT[] NOT NULL,
-  labels TEXT[],
-  assigned_to UUID REFERENCES users(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+## Type System
 
-### Messages Table
+TypeScript types are organized in the `src/lib/types` folder:
 
-```sql
-CREATE TABLE messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
-  sender_id UUID REFERENCES users(id),
-  content TEXT NOT NULL,
-  type TEXT CHECK (type IN ('text', 'image', 'video', 'file')) DEFAULT 'text',
-  attachment_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+- `profile.types.ts`: User profile types
+- `message.types.ts`: Message types
+- `chat.types.ts`: Chat and conversation types
+- `label.types.ts`: Label types
 
-## Setup Instructions
+## Getting Started
 
-1. **Clone the repository**
-
-   ```bash
-   git clone <your-repo-url>
-   cd periskope-chat-app
-   ```
-
-2. **Install dependencies**
-
+1. Clone the repository
+2. Install dependencies:
    ```bash
    npm install
    ```
-
-3. **Set up Supabase**
-
-   - Create a new project at [supabase.com](https://supabase.com)
-   - Copy your project URL and anon key
-   - Create the database tables using the SQL schema above
-
-4. **Environment variables**
-
+3. Set up environment variables:
    ```bash
-   cp .env.local.example .env.local
+   cp .env.example .env.local
    ```
-
-   Update with your Supabase credentials:
-
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-5. **Run the development server**
-
+4. Update `.env.local` with your Supabase credentials
+5. Run the development server:
    ```bash
    npm run dev
    ```
 
-6. **Build for production**
-   ```bash
-   npm run build
-   npm start
-   ```
+## Key Features
 
-## Key Implementation Highlights
+- Real-time messaging
+- Chat labels for organization
+- Message replies
+- Offline message support with IndexedDB
+- User profiles
 
-### Real-time Messaging
+## Data Flow
 
-- Uses Supabase real-time subscriptions for instant message delivery
-- Optimistic UI updates for smooth user experience
-- Automatic scrolling to latest messages
-
-### State Management
-
-- React hooks for local state management
-- Custom hooks for auth and chat operations
-- Efficient re-rendering with proper dependency arrays
-
-### UI/UX Design
-
-- Pixel-perfect implementation matching provided mockup
-- Smooth animations and transitions
-- Responsive design for all screen sizes
-- Proper loading and error states
-
-### Performance Optimizations
-
-- Component memoization where appropriate
-- Efficient database queries with proper indexing
-- Image optimization and lazy loading
-- Code splitting and bundle optimization
-
-## Deployment
-
-The application is configured for easy deployment on Vercel or Netlify:
-
-1. **Vercel Deployment**
-
-   ```bash
-   npm install -g vercel
-   vercel
-   ```
-
-2. **Netlify Deployment**
-   ```bash
-   npm run build
-   # Upload dist folder to Netlify
-   ```
-
-## AI Development Process
-
-This project was built with assistance from Claude AI, demonstrating effective AI-human collaboration in software development. The AI helped with:
-
-- Architecture planning and component structure
-- TypeScript type definitions and interfaces
-- Supabase integration and real-time features
-- Tailwind CSS styling and responsive design
-- Code organization and best practices
-
-## Future Enhancements
-
-- File upload and sharing capabilities
-- Voice and video calling integration
-- Advanced chat features (reactions, threads, mentions)
-- Mobile app using React Native
-- Advanced analytics and reporting
-- Integration with external CRM systems
+1. User authentication via Supabase Auth
+2. Chat list loaded from messages table, grouped by conversation partner
+3. Profile information fetched for each conversation partner
+4. Labels fetched and applied to conversations
+5. Real-time updates via Supabase subscriptions 
