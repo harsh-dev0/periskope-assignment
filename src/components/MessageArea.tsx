@@ -85,12 +85,12 @@ const MessageBox = ({
 const MessageArea = ({ currentChatPersonId }: { currentChatPersonId: string }) => {
   const [chatHistory, setChatHistory] = useState<CHAT_INFO_TYPE[]>([])
   const [profileInfo, setProfileInfo] = useState<ProfileInfoType | undefined>(undefined)
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
   const [labels, setLabels] = useState<LabelData[]>([])
   const [selectedLabels, setSelectedLabels] = useState<LabelData[]>([])
   const [message, setMessage] = useState<string>("")
   const [currentSelectedMessageId, setCurrentSelectedMessageId] = useState<string>("")
-  const [isScrollToBBVisible, setIsScrollToBBVisible] = useState<boolean>(false)
+  const [isScrolltobottomVisible, setisScrolltobottomVisible] = useState<boolean>(false)
   const [isLabelModalOpen, setIsLabelModalOpen] = useState<boolean>(false)
 
   const { user } = useAuthContext()
@@ -208,6 +208,9 @@ const MessageArea = ({ currentChatPersonId }: { currentChatPersonId: string }) =
 
   const handleNewMessage = useCallback((newMessage: any) => {
     if (!user || !profileInfo) return
+
+    // Log the new message for debugging
+    console.log("Received new message via realtime:", newMessage)
 
     const formattedMessage: CHAT_INFO_TYPE = {
       id: newMessage.id,
@@ -366,9 +369,14 @@ const MessageArea = ({ currentChatPersonId }: { currentChatPersonId: string }) =
         table: "messages",
         filter: `sender_id=eq.${currentChatPersonId},receiver_id=eq.${user.id}`
       }, (payload) => handleNewMessage(payload.new))
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Subscribed to realtime updates for chat: ${channelName}`)
+        }
+      })
 
     return () => {
+      console.log(`Unsubscribing from channel: ${channelName}`)
       supabase.removeChannel(subscription)
     }
   }, [user, profileInfo, currentChatPersonId, handleNewMessage])
@@ -379,7 +387,7 @@ const MessageArea = ({ currentChatPersonId }: { currentChatPersonId: string }) =
 
     const handleScroll = () => {
       const isAtBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 20
-      setIsScrollToBBVisible(!isAtBottom)
+      setisScrolltobottomVisible(!isAtBottom)
     }
 
     element.addEventListener("scroll", handleScroll)
@@ -493,7 +501,7 @@ const MessageArea = ({ currentChatPersonId }: { currentChatPersonId: string }) =
             className="absolute z-0 top-0 left-0 w-full h-full object-cover opacity-100"
           />
 
-          {isScrollToBBVisible && (
+          {isScrolltobottomVisible && (
             <div className="w-full flex justify-center absolute bottom-4 z-50">
               <div
                 onClick={() => scrollToBottom()}
