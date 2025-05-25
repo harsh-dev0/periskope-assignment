@@ -1,52 +1,24 @@
-"use client"
+"use client";
 
 import { useAuthContext } from "./AuthProvider"
 import { useRouter, usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
-import Spinner from "@/components/ui/Spinner"
+import { useEffect } from "react"
 
-export default function AuthRedirect({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const { user, loading } = useAuthContext()
-  const router = useRouter()
-  const pathname = usePathname()
-  const [timeoutOccurred, setTimeoutOccurred] = useState(false)
+export default function AuthRedirect({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthContext();
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Set a timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.log("Auth loading timeout occurred, forcing continue")
-        setTimeoutOccurred(true)
-      }
-    }, 5000) // 5 seconds timeout
-
-    return () => clearTimeout(timeoutId)
-  }, [loading])
-
-  useEffect(() => {
-    if (!loading || timeoutOccurred) {
-      if (!user && pathname !== "/login" && pathname !== "/signup") {
-        console.log("Redirecting to login page")
-        router.push("/login")
-      }
-      else if (user && (pathname === "/login" || pathname === "/signup")) {
-        console.log("Redirecting to home page")
-        router.push("/")
-      }
+    if (!user && pathname !== "/login" && pathname !== "/signup") {
+      console.log("Redirecting to login page");
+      router.replace("/login");
     }
-  }, [user, pathname, router, loading, timeoutOccurred])
+    else if (user && (pathname === "/login" || pathname === "/signup")) {
+      console.log("Redirecting to home page");
+      router.replace("/");
+    }
+  }, [user, pathname, router]);
 
-  if (loading && !timeoutOccurred) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center">
-        <Spinner variant="green" size="lg" />
-      </div>
-    )
-  }
-
-  return <>{children}</>
+  return <>{children}</>;
 }
