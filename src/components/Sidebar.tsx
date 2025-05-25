@@ -123,16 +123,16 @@ const Sidebar = () => {
               onClick={() => setIsLogoutOpen(!isLogoutOpen)}
             >
               {isLogoutOpen && (
-                <div className="absolute shadow-2xl -right-3 translate-x-full z-50 bg-white w-60 h-fit px-4 py-4 rounded-lg border border-gray-100">
-                  <button
-                    onClick={() => {
-                      logout()
-                    }}
-                    className="bg-red-500 w-full text-white px-3 py-1 text-sm rounded-md cursor-pointer"
-                  >
-                    Logout
-                  </button>
-                </div>
+               <div className="absolute shadow-xl -right-4 top-2 translate-x-full z-50 bg-white w-64 px-6 py-5 rounded-xl border border-gray-200 space-y-4">
+               
+               <button
+                 onClick={logout}
+                 className="w-full bg-red-500 hover:bg-red-600 text-white py-2 text-sm rounded-md transition-colors"
+               >
+                 Logout
+               </button>
+             </div>
+             
               )}
 
               <Icon

@@ -46,30 +46,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true)
       const { data, error } = await supabase.auth.getSession()
 
-      if (error || !data.session) {
+      if (error) {
+        console.error("Error getting session:", error)
         setUser(null)
         setLoading(false)
         return
       }
 
-      const { data: personalData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", data.session?.user.id)
-        .maybeSingle()
-
-      if (!personalData) {
+      if (!data.session) {
+        console.log("No active session found")
         setUser(null)
         setLoading(false)
         return
       }
 
-      setUser({
-        id: data.session.user.id,
-        email: data.session.user.email,
-        phone: personalData.phone,
-        name: personalData.name,
-      })
+      try {
+        const { data: personalData, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", data.session.user.id)
+          .maybeSingle()
+
+        if (profileError) {
+          console.error("Error fetching profile:", profileError)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
+        if (!personalData) {
+          console.log("No profile data found for user")
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
+        setUser({
+          id: data.session.user.id,
+          email: data.session.user.email,
+          phone: personalData.phone,
+          name: personalData.name,
+        })
+      } catch (profileFetchError) {
+        console.error("Exception in profile fetch:", profileFetchError)
+        setUser(null)
+      }
     } catch (error) {
       console.error("Error in auth setup:", error)
       setUser(null)
@@ -79,10 +100,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   useEffect(() => {
-    setUserFunc()
+    let mounted = true;
+    
+    const initAuth = async () => {
+      try {
+        await setUserFunc();
+      } catch (error) {
+        console.error("Failed to initialize auth:", error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state changed:", event);
+        
         if (event === 'SIGNED_IN' && session) {
           try {
             const { data: personalData } = await supabase
@@ -91,30 +127,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               .eq("id", session.user.id)
               .maybeSingle()
 
-            setUser({
-              id: session.user.id,
-              email: session.user.email,
-              phone: personalData?.phone,
-              name: personalData?.name,
-            })
+            if (mounted) {
+              setUser({
+                id: session.user.id,
+                email: session.user.email,
+                phone: personalData?.phone,
+                name: personalData?.name,
+              });
+            }
           } catch (error) {
             console.error("Error fetching profile on auth change:", error)
+            if (mounted) {
+              setUser(null);
+            }
           }
         } else if (event === 'SIGNED_OUT') {
-          setUser(null)
+          if (mounted) {
+            setUser(null);
+          }
         }
       }
-    )
+    );
 
     return () => {
-      authListener?.subscription.unsubscribe()
+      mounted = false;
+      authListener?.subscription.unsubscribe();
     }
   }, [setUserFunc])
 
   const logout = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    router.push("/login")
+    setLoading(true);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      router.push("/login");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
