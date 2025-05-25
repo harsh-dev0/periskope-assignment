@@ -7,7 +7,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import Spinner from "@/components/ui/Spinner"
-import { useAuthContext } from "@/providers/AuthProvider"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
@@ -18,7 +17,6 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
-  const { loading } = useAuthContext()
 
   const handleSignup = async () => {
     if (!email || !password || !name) {
@@ -56,13 +54,7 @@ export default function SignupPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center bg-[#FAF3EB]">
-        <Spinner variant="green" size="lg" />
-      </div>
-    );
-  }
+  
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-[#FAF3EB]">

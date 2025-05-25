@@ -6,8 +6,26 @@ import { Icon } from "@iconify/react"
 import Image from "next/image"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Spinner from "@/components/ui/Spinner"
+
+// Component to handle search params
+function LoginWithParams() {
+  const searchParams = useSearchParams()
+  const [successMessage, setSuccessMessage] = useState("")
+  
+  useEffect(() => {
+    if (searchParams?.get("signup") === "success") {
+      setSuccessMessage("Account created successfully! Please log in.")
+    }
+  }, [searchParams])
+  
+  return successMessage ? (
+    <div className="bg-green-50 text-green-700 p-3 rounded-md mb-4 text-sm">
+      {successMessage}
+    </div>
+  ) : null
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -15,15 +33,7 @@ export default function LoginPage() {
   const [isVisible, setIsVisible] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
-  const searchParams = useSearchParams()
-  const { setUser, loading } = useAuthContext()
-
-  useEffect(() => {
-    if (searchParams?.get("signup") === "success") {
-      setSuccessMessage("Account created successfully! Please log in.")
-    }
-  }, [searchParams])
+  const { setUser } = useAuthContext()
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,7 +43,6 @@ export default function LoginPage() {
 
     setIsLoading(true)
     setError("")
-    setSuccessMessage("")
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -57,14 +66,6 @@ export default function LoginPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center bg-[#FAF3EB]">
-        <Spinner variant="green" size="lg" />
-      </div>
-    );
-  }
-
   return (
     <div className="w-full h-screen flex items-center justify-center bg-[#FAF3EB]">
       <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-8">
@@ -85,11 +86,9 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {successMessage && (
-          <div className="bg-green-50 text-green-700 p-3 rounded-md mb-4 text-sm">
-            {successMessage}
-          </div>
-        )}
+        <Suspense fallback={null}>
+          <LoginWithParams />
+        </Suspense>
 
         {error && (
           <div className="bg-red-50 text-red-700 p-3 rounded-md mb-4 text-sm">

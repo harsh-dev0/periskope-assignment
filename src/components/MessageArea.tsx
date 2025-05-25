@@ -151,6 +151,7 @@ import Image from "next/image"
 
         if (profileResponse.error) {
           console.error("❌ Error fetching profile:", profileResponse.error)
+          setIsLoading(false)
           return
         }
 
@@ -433,8 +434,10 @@ import Image from "next/image"
 
     // Initialize chat when dependencies change
     useEffect(() => {
-      initializeChat()
-    }, [initializeChat])
+      if (user) {
+        initializeChat();
+      }
+    }, [initializeChat, user]);
 
     // Fetch labels when dependencies change
     useEffect(() => {
