@@ -1,69 +1,87 @@
+
 # Chat Application
 
-A real-time chat application built with Next.js, TypeScript, and Supabase.
+A real-time chat app built with Next.js, TypeScript, and Supabase.
+Deployed: https://periskope-assignment-ten.vercel.app/
 
-## Project Structure
+## Project Overview
 
-- `src/app`: Next.js app router pages
-- `src/components`: React components
-  - `chat/`: Chat-related components
-  - `layouts/`: Layout components
-  - `ui/`: Reusable UI components
-- `src/lib`: Utilities and shared code
-  - `db/`: Database schema and utilities
-  - `types/`: TypeScript type definitions
-  - `supabase.ts`: Supabase client configuration
-
-## Database Schema
-
-The application uses the following tables:
-
-1. **profiles**: User profile information
-2. **messages**: Chat messages between users
-3. **chat_label_types**: Available label types for categorizing chats
-4. **chat_labels**: Associations between labels and chats
-5. **chats**: (Optional) Chat metadata for future group chat support
-
-See `src/lib/db/schema.sql` for the complete schema.
-
-## Type System
-
-TypeScript types are organized in the `src/lib/types` folder:
-
-- `profile.types.ts`: User profile types
-- `message.types.ts`: Message types
-- `chat.types.ts`: Chat and conversation types
-- `label.types.ts`: Label types
-
-## Getting Started
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Set up environment variables:
-   ```bash
-   cp .env.example .env.local
-   ```
-4. Update `.env.local` with your Supabase credentials
-5. Run the development server:
-   ```bash
-   npm run dev
-   ```
+This app supports real-time messaging with chat labels and message replies, powered by Supabase’s realtime features.
 
 ## Key Features
 
-- Real-time messaging
-- Chat labels for organization
-- Message replies
-- Offline message support with IndexedDB
-- User profiles
+* Real-time messaging using [Supabase Realtime API](https://supabase.com/docs/guides/realtime)
+* Chat labels for organizing conversations
+* Message replies for threaded discussions
 
-## Data Flow
+## Technologies Used
 
-1. User authentication via Supabase Auth
-2. Chat list loaded from messages table, grouped by conversation partner
-3. Profile information fetched for each conversation partner
-4. Labels fetched and applied to conversations
-5. Real-time updates via Supabase subscriptions 
+* Next.js (App Router)
+* TypeScript
+* Supabase (Auth, Realtime, Database)
+
+
+## Getting Started
+
+1. Clone the repo:
+
+   ```bash
+   git clone https://github.com/your-username/your-repo.git
+   ```
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+3. Setup environment variables:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+4. Update `.env.local` with your Supabase project URL and anon key.
+5. Run the development server:
+
+   ```bash
+   npm run dev
+   ```
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Database Schema
+
+The app uses the following tables (see `src/lib/db/schema.sql`):
+
+* `profiles` — user profile data
+* `messages` — chat messages
+* `chat_label_types` — label types for chats
+* `chat_labels` — label assignments to chats
+* `chats` — chat metadata (future group chat support)
+
+## TypeScript Types
+
+Types are organized under `src/lib/types`:
+
+* `profile.types.ts` — user profiles
+* `message.types.ts` — messages
+* `chat.types.ts` — chats and conversations
+* `label.types.ts` — chat labels
+
+## Real-time Data Flow
+
+* Users authenticate with Supabase Auth
+* Conversations load from `messages` table
+* User profiles and chat labels are fetched and applied
+* Supabase realtime subscriptions keep chat data in sync live
+
+## Learning Notes
+
+* This was my first project using Supabase Realtime.
+* I explored and understood Supabase’s realtime channels, sync behavior, and edge cases.
+* Learned about handling message sync issues, permissions, and data consistency in realtime apps.
+* The experience deepened my knowledge of building robust, reactive full-stack apps with realtime data.
+
+## Useful Links
+
+* [Supabase Realtime Docs](https://supabase.com/docs/guides/realtime)
+* [Next.js Documentation](https://nextjs.org/docs)
+* [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+
