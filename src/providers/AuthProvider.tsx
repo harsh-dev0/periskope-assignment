@@ -41,70 +41,82 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
+  const fetchUserProfile = useCallback(async (userId: string) => {
+    try {
+      const { data: personalData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError)
+        return null
+      }
+
+      return personalData
+    } catch (error) {
+      console.error("Exception in profile fetch:", error)
+      return null
+    }
+  }, [])
+
   const setUserFunc = useCallback(async () => {
     try {
-      setLoading(true)
       const { data, error } = await supabase.auth.getSession()
 
       if (error) {
         console.error("Error getting session:", error)
         setUser(null)
-        setLoading(false)
-        return
+        return false
       }
 
       if (!data.session) {
         console.log("No active session found")
         setUser(null)
-        setLoading(false)
-        return
+        return false
       }
 
-      try {
-        const { data: personalData, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", data.session.user.id)
-          .maybeSingle()
-
-        if (profileError) {
-          console.error("Error fetching profile:", profileError)
-          setUser(null)
-          setLoading(false)
-          return
-        }
-
-        if (!personalData) {
-          console.log("No profile data found for user")
-          setUser(null)
-          setLoading(false)
-          return
-        }
-
+      const personalData = await fetchUserProfile(data.session.user.id)
+      
+      if (personalData) {
         setUser({
           id: data.session.user.id,
           email: data.session.user.email,
           phone: personalData.phone,
           name: personalData.name,
         })
-      } catch (profileFetchError) {
-        console.error("Exception in profile fetch:", profileFetchError)
+        return true
+      } else {
         setUser(null)
+        return false
       }
     } catch (error) {
       console.error("Error in auth setup:", error)
       setUser(null)
-    } finally {
-      setLoading(false)
+      return false
     }
-  }, [])
+  }, [fetchUserProfile])
 
   useEffect(() => {
     let mounted = true;
+    let authTimeout: NodeJS.Timeout;
     
     const initAuth = async () => {
       try {
-        await setUserFunc();
+        const success = await setUserFunc();
+        
+        // Set a safety timeout to prevent infinite loading
+        authTimeout = setTimeout(() => {
+          if (mounted && loading) {
+            console.warn("Auth initialization timed out, forcing completion")
+            setLoading(false)
+          }
+        }, 3000)
+        
+        if (mounted) {
+          setLoading(false)
+        }
       } catch (error) {
         console.error("Failed to initialize auth:", error);
         if (mounted) {
@@ -121,12 +133,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (event === 'SIGNED_IN' && session) {
           try {
-            const { data: personalData } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .maybeSingle()
-
+            const personalData = await fetchUserProfile(session.user.id)
+            
             if (mounted) {
               setUser({
                 id: session.user.id,
@@ -134,16 +142,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 phone: personalData?.phone,
                 name: personalData?.name,
               });
+              setLoading(false);
             }
           } catch (error) {
             console.error("Error fetching profile on auth change:", error)
             if (mounted) {
               setUser(null);
+              setLoading(false);
             }
           }
         } else if (event === 'SIGNED_OUT') {
           if (mounted) {
             setUser(null);
+            setLoading(false);
           }
         }
       }
@@ -151,9 +162,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       mounted = false;
+      clearTimeout(authTimeout);
       authListener?.subscription.unsubscribe();
     }
-  }, [setUserFunc])
+  }, [setUserFunc, loading, fetchUserProfile])
 
   const logout = async () => {
     setLoading(true);

@@ -14,32 +14,45 @@ export default function AuthRedirect({
   const router = useRouter()
   const pathname = usePathname()
   const [timeoutOccurred, setTimeoutOccurred] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
+  // Set a timeout to prevent infinite loading
   useEffect(() => {
-    // Set a timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       if (loading) {
         console.log("Auth loading timeout occurred, forcing continue")
         setTimeoutOccurred(true)
       }
-    }, 5000) // 5 seconds timeout
+    }, 3000) // Reduced to 3 seconds timeout
 
     return () => clearTimeout(timeoutId)
   }, [loading])
 
+  // Handle redirection based on auth state
   useEffect(() => {
+    // Skip if already redirecting to prevent loops
+    if (isRedirecting) return
+    
+    // Only proceed if we have auth state or timeout occurred
     if (!loading || timeoutOccurred) {
-      if (!user && pathname !== "/login" && pathname !== "/signup") {
+      const isAuthPath = pathname === "/login" || pathname === "/signup"
+      
+      // User is not authenticated and trying to access protected route
+      if (!user && !isAuthPath) {
+        setIsRedirecting(true)
         console.log("Redirecting to login page")
-        router.push("/login")
+        router.replace("/login")
       }
-      else if (user && (pathname === "/login" || pathname === "/signup")) {
+      // User is authenticated and trying to access auth routes
+      else if (user && isAuthPath) {
+        setIsRedirecting(true)
         console.log("Redirecting to home page")
-        router.push("/")
+        router.replace("/")
       }
     }
-  }, [user, pathname, router, loading, timeoutOccurred])
+  }, [user, pathname, router, loading, timeoutOccurred, isRedirecting])
 
+  // Show loading spinner only if still loading and timeout hasn't occurred
   if (loading && !timeoutOccurred) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -48,5 +61,6 @@ export default function AuthRedirect({
     )
   }
 
+  // Render children once auth state is determined
   return <>{children}</>
 }
