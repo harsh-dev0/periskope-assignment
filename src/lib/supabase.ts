@@ -7,8 +7,17 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     params: {
       eventsPerSecond: 10,
-      realtimeMode: 'extended'
+      realtimeMode: 'extended',
+      fastConnect: true,
+      queueSize: 100
     }
+  },
+  global: {
+    fetch: fetch.bind(globalThis)
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true
   }
 });
 

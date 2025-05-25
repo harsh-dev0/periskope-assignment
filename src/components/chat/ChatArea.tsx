@@ -2,11 +2,11 @@
 
 import { Icon } from "@iconify/react"
 import ActionButton, { ActionButtonType } from "../ui/ActionButton"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuthContext } from "@/providers/AuthProvider"
 import SingleChatBox from "./SingleChatBox"
-import { ConversationData, GroupedMessages, ProfileMap } from "@/lib/types/chat.types"
+import { ConversationData } from "@/lib/types/chat.types"
 
 let cachedConversations: ConversationData[] = []
 
@@ -35,165 +35,194 @@ const ChatArea = ({
 
   const [sortingEnabled, setSortingEnabled] = useState<boolean>(false)
 
-  const fetchConversationsData = async () => {
-    try {
-      if (!user?.id) return;
+  const searchForNewContacts = useCallback(async (phoneInput: string) => {
+    if (!user?.id) return
 
-      // Directly query messages instead of using the database function
-      const { data: messagesData, error: messagesError } = await supabase
-        .from("messages")
-        .select("*")
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .ilike("phone", `%${phoneInput}%`)
+      .neq("id", user?.id)
 
-      if (messagesError) {
-        console.error("Error fetching messages:", messagesError);
-        setConversationsList([]);
-        cachedConversations = [];
-        return;
-      }
-
-      // Handle case where there are no messages yet
-      if (!messagesData || messagesData.length === 0) {
-        setConversationsList([]);
-        cachedConversations = [];
-        return;
-      }
-
-      // Group messages by conversation partner
-      interface GroupedMessages {
-        [key: string]: {
-          person_id: string;
-          messages: Array<{
-            content: string;
-            created_at: string;
-          }>;
-        };
-      }
-
-      const groupedByPartner = messagesData.reduce<GroupedMessages>((acc, message) => {
-        const partnerId = message.sender_id === user.id ? message.receiver_id : message.sender_id;
-        
-        if (!acc[partnerId]) {
-          acc[partnerId] = {
-            person_id: partnerId,
-            messages: [],
-          };
-        }
-        
-        acc[partnerId].messages.push({
-          content: message.content,
-          created_at: message.created_at,
-        });
-        
-        return acc;
-      }, {});
-
-      const partnerIds = Object.keys(groupedByPartner);
-
-      // Fetch profile information for all conversation partners
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, name, phone")
-        .in("id", partnerIds);
-
-      if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
-        return;
-      }
-
-      // Create a lookup map for profile data
-      interface ProfileMap {
-        [key: string]: {
-          name: string;
-          phone: string;
-        };
-      }
-
-      const profilesMap = profilesData.reduce<ProfileMap>((acc, profile) => {
-        acc[profile.id] = {
-          name: profile.name,
-          phone: profile.phone,
-        };
-        return acc;
-      }, {});
-
-      // Fetch chat labels
-      const { data: labelsData, error: labelsError } = await supabase
-        .from("chat_labels")
-        .select("chat_partner_id, label_ids")
-        .eq("user_id", user.id);
-
-      if (labelsError) {
-        console.error("Error fetching labels:", labelsError);
-      }
-
-      // Get label details
-      const { data: labelTypes } = await supabase
-        .from("chat_label_types")
-        .select("*");
-
-      // Process conversations with the latest message for each partner
-      const processedConversations = Object.values(groupedByPartner).map((group) => {
-        // Sort messages by date (newest first) and take the latest one
-        const sortedMessages = group.messages.sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        const latestMessage = sortedMessages[0];
-        
-        // Get profile details or use defaults
-        const profile = profilesMap[group.person_id] || {};
-        
-        // Find labels for this conversation
-        const chatLabels = labelsData?.find(
-          (label) => label.chat_partner_id === group.person_id
-        );
-        
-        // Map label IDs to full label objects
-        const labels = chatLabels?.label_ids
-          ? chatLabels.label_ids.map((id: string) => {
-              const labelType = labelTypes?.find((lt) => lt.id === id);
-              return labelType 
-                ? { 
-                    id: labelType.id,
-                    label_name: labelType.label_name,
-                    color: labelType.color
-                  }
-                : null;
-            }).filter(Boolean)
-          : [];
-
-        return {
-          person_id: group.person_id,
-          name: profile.name || "Unknown User",
-          phone: profile.phone || "N/A",
-          latest_message: latestMessage.content,
-          latest_message_timestamp: latestMessage.created_at,
-          labels: labels,
-        };
-      });
-
-      // Sort conversations by latest message timestamp (newest first)
-      processedConversations.sort(
-        (a, b) => 
-          new Date(b.latest_message_timestamp).getTime() - 
-          new Date(a.latest_message_timestamp).getTime()
-      );
-
-      setConversationsList(processedConversations);
-      cachedConversations = processedConversations;
-    } catch (error) {
-      console.error("Unexpected error in fetchConversationsData:", error);
-      setConversationsList([]);
-      cachedConversations = [];
+    if (error) {
+      console.error("Supabase error:", error)
+      setSearchResultsList([])
+      return
     }
-  };
+
+    const contactsData: ConversationData[] = data.map(
+      (contactItem) => ({
+        person_id: contactItem.id,
+        name: contactItem.name,
+        phone: contactItem.phone,
+        latest_message: "",
+        latest_message_timestamp: "",
+        labels: [],
+      })
+    )
+
+    setSearchResultsList(contactsData)
+  }, [user?.id, setSearchResultsList])
 
   useEffect(() => {
     if (!user) return
 
+    const fetchConversationsData = async () => {
+      try {
+        if (!user?.id) return;
+
+        // Directly query messages instead of using the database function
+        const { data: messagesData, error: messagesError } = await supabase
+          .from("messages")
+          .select("*")
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+          .order("created_at", { ascending: false });
+
+        if (messagesError) {
+          console.error("Error fetching messages:", messagesError);
+          setConversationsList([]);
+          cachedConversations = [];
+          return;
+        }
+
+        // Handle case where there are no messages yet
+        if (!messagesData || messagesData.length === 0) {
+          setConversationsList([]);
+          cachedConversations = [];
+          return;
+        }
+
+        // Group messages by conversation partner
+        interface GroupedMessages {
+          [key: string]: {
+            person_id: string;
+            messages: Array<{
+              content: string;
+              created_at: string;
+            }>;
+          };
+        }
+
+        const groupedByPartner = messagesData.reduce<GroupedMessages>((acc, message) => {
+          const partnerId = message.sender_id === user.id ? message.receiver_id : message.sender_id;
+          
+          if (!acc[partnerId]) {
+            acc[partnerId] = {
+              person_id: partnerId,
+              messages: [],
+            };
+          }
+          
+          acc[partnerId].messages.push({
+            content: message.content,
+            created_at: message.created_at,
+          });
+          
+          return acc;
+        }, {});
+
+        const partnerIds = Object.keys(groupedByPartner);
+
+        // Fetch profile information for all conversation partners
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, name, phone")
+          .in("id", partnerIds);
+
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+          return;
+        }
+
+        // Create a lookup map for profile data
+        interface ProfileMap {
+          [key: string]: {
+            name: string;
+            phone: string;
+          };
+        }
+
+        const profilesMap = profilesData.reduce<ProfileMap>((acc, profile) => {
+          acc[profile.id] = {
+            name: profile.name,
+            phone: profile.phone,
+          };
+          return acc;
+        }, {});
+
+        // Fetch chat labels
+        const { data: labelsData, error: labelsError } = await supabase
+          .from("chat_labels")
+          .select("chat_partner_id, label_ids")
+          .eq("user_id", user.id);
+
+        if (labelsError) {
+          console.error("Error fetching labels:", labelsError);
+        }
+
+        // Get label details
+        const { data: labelTypes } = await supabase
+          .from("chat_label_types")
+          .select("*");
+
+        // Process conversations with the latest message for each partner
+        const processedConversations = Object.values(groupedByPartner).map((group) => {
+          // Sort messages by date (newest first) and take the latest one
+          const sortedMessages = group.messages.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          const latestMessage = sortedMessages[0];
+          
+          // Get profile details or use defaults
+          const profile = profilesMap[group.person_id] || {};
+          
+          // Find labels for this conversation
+          const chatLabels = labelsData?.find(
+            (label) => label.chat_partner_id === group.person_id
+          );
+          
+          // Map label IDs to full label objects
+          const labels = chatLabels?.label_ids
+            ? chatLabels.label_ids.map((id: string) => {
+                const labelType = labelTypes?.find((lt) => lt.id === id);
+                return labelType 
+                  ? { 
+                      id: labelType.id,
+                      label_name: labelType.label_name,
+                      color: labelType.color
+                    }
+                  : null;
+              }).filter(Boolean)
+            : [];
+
+          return {
+            person_id: group.person_id,
+            name: profile.name || "Unknown User",
+            phone: profile.phone || "N/A",
+            latest_message: latestMessage.content,
+            latest_message_timestamp: latestMessage.created_at,
+            labels: labels,
+          };
+        });
+
+        // Sort conversations by latest message timestamp (newest first)
+        processedConversations.sort(
+          (a, b) => 
+            new Date(b.latest_message_timestamp).getTime() - 
+            new Date(a.latest_message_timestamp).getTime()
+        );
+
+        setConversationsList(processedConversations);
+        cachedConversations = processedConversations;
+      } catch (error) {
+        console.error("Unexpected error in fetchConversationsData:", error);
+        setConversationsList([]);
+        cachedConversations = [];
+      }
+    };
+
     fetchConversationsData()
-  }, [user?.id])
+  }, [user?.id, user])
 
   useEffect(() => {
     const delayTimer = setTimeout(() => {
@@ -207,7 +236,7 @@ const ChatArea = ({
     return () => {
       clearTimeout(delayTimer)
     }
-  }, [newContactQuery])
+  }, [newContactQuery, searchForNewContacts])
 
   useEffect(() => {
     const delayTimer = setTimeout(() => {
@@ -233,35 +262,6 @@ const ChatArea = ({
       clearTimeout(delayTimer)
     }
   }, [existingChatsQuery])
-
-  const searchForNewContacts = async (phoneInput: string) => {
-    if (!user?.id) return
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .ilike("phone", `%${phoneInput}%`)
-      .neq("id", user?.id)
-
-    if (error) {
-      console.error("Supabase error:", error)
-      setSearchResultsList([])
-      return
-    }
-
-    const contactsData: ConversationData[] = data.map(
-      (contactItem: any) => ({
-        person_id: contactItem.id,
-        name: contactItem.name,
-        phone: contactItem.phone,
-        latest_message: "",
-        latest_message_timestamp: "",
-        labels: [],
-      })
-    )
-
-    setSearchResultsList(contactsData)
-  }
 
   useEffect(() => {
     const containerElement = scrollContainerRef.current

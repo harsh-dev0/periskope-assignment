@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase"
 import { Icon } from "@iconify/react"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import Spinner from "@/components/ui/Spinner"
 
@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
-  const router = useRouter()
   const searchParams = useSearchParams()
   const { setUser, loading } = useAuthContext()
 
@@ -52,7 +51,7 @@ export default function LoginPage() {
         setError(error?.message || "Login failed");
       }
     } catch (err) {
-      setError("An error occurred during login");
+      setError("An error occurred during login: " + err);
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +141,7 @@ export default function LoginPage() {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/signup"
               className="text-[#00a884] hover:text-[#009977] font-medium"
